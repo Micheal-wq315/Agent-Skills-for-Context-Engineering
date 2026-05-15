@@ -53,6 +53,16 @@ researcher/reports/loop-events.jsonl
 researcher/reports/loop-failures.jsonl
 researcher/reports/status.md
 researcher/reports/parked-review.md
+researcher/reports/skill-health.json
+researcher/reports/skill-health-history.jsonl
+
+# Benchmark runner runtime artifacts (do not commit)
+researcher/benchmarks/router/results/
+researcher/benchmarks/effectiveness/results/
+researcher/benchmarks/sdk-runner/node_modules/
+researcher/benchmarks/sdk-runner/dist/
+researcher/reports/router-history.jsonl
+researcher/reports/effectiveness-history.jsonl
 researcher/queue/.locks/
 researcher/queue/inbox.jsonl
 researcher/queue/parked.jsonl
