@@ -1272,6 +1272,223 @@ radar_detection/
 - 目标分类算法
 - 实时图像处理优化
 
+#### （十四）深圳北理莫斯科大学北极熊战队导航系统
+
+深圳北理莫斯科大学北极熊战队（SMBU-PolarBear）在 2025 赛季开源了完整的哨兵导航系统，包括仿真环境和真实机器人导航代码。该项目使用 Livox Mid360 激光雷达与 IMU 融合，实现了高精度的自主导航功能。
+
+**项目仓库**：
+
+- 导航仿真环境：[pb_rm_simulation](https://gitee.com/SMBU-POLARBEAR/pb_rm_simulation)
+- 哨兵导航模块：[pb2025_sentry_nav](https://github.com/SMBU-PolarBear-Robotics-Team/pb2025_sentry_nav)
+- 自动哨兵上位机：[RM2024_SMBU_auto_sentry_ws](https://gitee.com/SMBU-POLARBEAR/RM2024_SMBU_auto_sentry_ws)
+
+**算法架构详解**：
+
+该导航系统采用分层架构设计，包含感知层、定位层、规划层和控制层四个核心层次：
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    决策层（决策模块）                        │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ 状态机管理 · 行为决策 · 任务调度 · 威胁评估            │  │
+│  └───────────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ 目标点 / 路径请求
+┌────────────────────────────▼────────────────────────────────┐
+│                    规划层（路径规划）                        │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ 全局路径规划 · 局部避障 · 动态路径重规划              │  │
+│  │ 算法：A* / Dijkstra / DWA / TEB                      │  │
+│  └───────────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ 速度指令
+┌────────────────────────────▼────────────────────────────────┐
+│                    控制层（运动控制）                        │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ 底盘运动学解算 · 速度跟踪 · 姿态稳定 · 功率限制        │  │
+│  └───────────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────────┘
+                             │ 执行命令
+┌────────────────────────────▼────────────────────────────────┐
+│                    感知层（传感器融合）                      │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌─────────┐ │
+│  │ 激光雷达   │  │   IMU     │  │ 视觉相机  │  │ 里程计  │ │
+│  │ Mid360    │  │ 六轴/九轴 │  │ RGB/D    │  │ 编码器  │ │
+│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └────┬────┘ │
+│        │              │              │               │      │
+│        └──────────────┼──────────────┴───────────────┘      │
+│                       ▼                                     │
+│              ┌───────────────┐                              │
+│              │ 传感器融合    │                              │
+│              │ 扩展卡尔曼滤波 │                              │
+│              │ 状态估计      │                              │
+│              └───────────────┘                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**核心算法模块详解**：
+
+**1. SLAM 定位模块**
+
+采用 LiDAR-IMU 紧耦合融合方案：
+
+```c
+typedef struct {
+    // 激光特征
+    pcl::PointCloud<pcl::PointXYZIRT>::Ptr scan;
+    pcl::PointCloud<pcl::PointXYZIRT>::Ptr local_map;
+    
+    // IMU 数据
+    Eigen::Vector3d angular_velocity;
+    Eigen::Vector3d linear_acceleration;
+    
+    // 位姿状态
+    Eigen::Isometry3d pose;
+    Eigen::Vector3d velocity;
+    Eigen::Matrix<double, 15, 15> covariance;
+    
+    // 特征提取
+    std::vector<Eigen::Vector3d> edge_features;
+    std::vector<Eigen::Vector3d> plane_features;
+} SlamState_t;
+
+void LidarImuFusion(SlamState_t *state) {
+    // 1. IMU 预积分
+    IntegrateIMUMsg(state);
+    
+    // 2. 激光特征提取
+    ExtractFeatures(state);
+    
+    // 3. 特征匹配
+    MatchFeatures(state);
+    
+    // 4. 位姿优化
+    OptimizePose(state);
+    
+    // 5. 滑动窗口边缘化
+    Marginalization(state);
+}
+```
+
+**2. 路径规划模块**
+
+采用分层规划策略：
+
+```c
+typedef struct {
+    // 全局路径
+    std::vector<Eigen::Vector2d> global_path;
+    
+    // 局部路径
+    std::vector<Eigen::Vector2d> local_path;
+    
+    // 代价地图
+    nav_msgs::OccupancyGrid costmap;
+    
+    // 当前目标
+    Eigen::Vector2d target_point;
+    
+    // 规划状态
+    enum {IDLE, PLANNING, EXECUTING, REPLANNING} status;
+} PathPlanner_t;
+
+void GlobalPlanner(PathPlanner_t *planner) {
+    // A* 算法寻找最优路径
+    planner->global_path = AStarSearch(planner->costmap, 
+                                      GetCurrentPosition(),
+                                      planner->target_point);
+}
+
+void LocalPlanner(PathPlanner_t *planner) {
+    // DWA 动态窗口法进行局部避障
+    planner->local_path = DynamicWindowApproach(planner->global_path,
+                                                planner->costmap,
+                                                GetCurrentVelocity());
+}
+```
+
+**3. 决策模块**
+
+基于有限状态机的行为决策：
+
+```c
+typedef enum {
+    STATE_IDLE,
+    STATE_PATROL,
+    STATE_CHASE,
+    STATE_DEFEND,
+    STATE_ESCAPE,
+    STATE_RECHARGE
+} SentryState_t;
+
+void DecisionFSM(SentryState_t *state, SensorData_t *sensors) {
+    switch(*state) {
+        case STATE_PATROL:
+            if(DetectEnemy(sensors)) {
+                *state = STATE_CHASE;
+                SetTarget(GetEnemyPosition(sensors));
+            }
+            else if(IsLowPower(sensors)) {
+                *state = STATE_RECHARGE;
+                SetTarget(GetRechargePoint());
+            }
+            break;
+            
+        case STATE_CHASE:
+            if(LostEnemy(sensors)) {
+                *state = STATE_PATROL;
+                SetPatrolRoute();
+            }
+            else if(EnemyTooClose(sensors)) {
+                *state = STATE_DEFEND;
+                StartShooting();
+            }
+            break;
+            
+        // ... 其他状态处理
+    }
+}
+```
+
+**4. 仿真环境架构**
+
+基于 ROS2-Gazebo 的仿真框架：
+
+```
+pb_rm_simulation/
+├── launch/                  # 启动文件
+│   ├── simulation.launch.py
+│   └── navigation.launch.py
+├── worlds/                  # 仿真地图
+│   ├── rmuc_world.world
+│   └── rmul_world.world
+├── models/                  # 机器人模型
+│   ├── sentry/              # 哨兵机器人
+│   └── obstacles/           # 障碍物
+├── config/                  # 配置文件
+│   ├── slam.yaml
+│   ├── planner.yaml
+│   └── controller.yaml
+└── scripts/                 # 辅助脚本
+    ├── map_generator.py
+    └── data_recorder.py
+```
+
+**项目特点**：
+
+- **Sim2Real 设计理念**：仿真环境与真实机器人参数一致，便于算法迁移
+- **多传感器融合**：LiDAR + IMU + 视觉多模态数据融合
+- **模块化架构**：感知、定位、规划、控制分层解耦
+- **可扩展性强**：支持 RMUC/RMUL 多种比赛地图
+
+**学习重点**：
+
+- LiDAR-IMU 紧耦合 SLAM
+- 分层路径规划算法（全局+局部）
+- 有限状态机决策系统
+- ROS2-Gazebo 仿真框架使用
+- Sim2Real 迁移策略
+
 ### 三、开源平台资源导航
 
 #### （一）Gitee RoboMaster 专题
