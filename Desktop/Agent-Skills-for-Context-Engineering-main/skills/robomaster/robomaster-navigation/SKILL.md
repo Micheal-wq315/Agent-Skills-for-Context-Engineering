@@ -1,7 +1,7 @@
 ---
 name: RoboMaster 导航系统
-description: 提供 RoboMaster 哨兵导航系统完整设计指南，包括 LiDAR-IMU 紧耦合 SLAM、A*/DWA 分层路径规划、有限状态机决策系统、ROS2 仿真环境和 Sim2Real 迁移策略
-version: 2.0.0
+description: 提供 RoboMaster 哨兵导航系统完整设计指南，包括 LiDAR-IMU 紧耦合 SLAM、A*/DWA 分层路径规划、有限状态机决策系统、ROS2 仿真环境、Sim2Real 迁移策略和开源项目深度分析
+version: 2.1.0
 author: RoboMaster技术团队
 tags:
   - RoboMaster
@@ -49,10 +49,10 @@ tags:
 
 | 方案 | 精度 | 成本 | 光照依赖 | 推荐场景 |
 |------|------|------|---------|---------|
-| **LiDAR SLAM** (Cartographer) | 很高 | 高 | 无 | 哨兵标配 |
-| **Visual SLAM** (ORB-SLAM3) | 中 | 低 | 严重 | 室内纹理丰富 |
-| **LiDAR-IMU** (LIO-SAM) | 很高 | 高 | 无 | 高精度需求 |
-| **2D LiDAR** (GMapping) | 中 | 中 | 无 | 低预算方案 |
+| **LiDAR SLAM (Cartographer)** | 很高 | 高 | 无 | 哨兵标配 |
+| **Visual SLAM (ORB-SLAM3)** | 中 | 低 | 严重 | 室内纹理丰富 |
+| **LiDAR-IMU (LIO-SAM)** | 很高 | 高 | 无 | 高精度需求 |
+| **2D LiDAR (GMapping)** | 中 | 中 | 无 | 低预算方案 |
 
 ### LiDAR-IMU 紧耦合 SLAM 核心算法
 
@@ -176,7 +176,7 @@ def dwa_planner(current_pose, current_vel, goal, obstacles, config):
     for vx in vx_samples:
         for vy in vy_samples:
             for vw in vw_samples:
-                # 1. 预测轨迹 (dt=3s, 步长0.1s)
+                # 1. 预测轨迹 (dt=3s, 步长 0.1s)
                 traj = predict_trajectory(current_pose, vx, vy, vw, 3.0, 0.1)
                 # 2. 碰撞检测
                 if check_collision(traj, obstacles):
@@ -280,19 +280,170 @@ pb_rm_simulation/
 
 ---
 
-## 六、开源项目参考
+## 六、开源项目深度分析
 
-| 项目 | 战队 | 平台 | 亮点 |
-|------|------|------|------|
-| [KDRobot_RM2023Sentry_Navigation](https://gitee.com/KDRobot) | 河北科大 | Gitee | ROS 哨兵导航、Cartographer |
-| [pb_rm_simulation](https://gitee.com/SMBU-POLARBEAR) | 深圳北理莫斯科 | Gitee | Gazebo仿真、完整哨兵 |
-| [pb2025_sentry_nav](https://github.com/SMBU-PolarBear-Robotics-Team) | 深圳北理莫斯科 | GitHub | 2025 赛季真实导航 |
-| [RM2024_SMBU_auto_sentry_ws](https://gitee.com/SMBU-POLARBEAR) | 深圳北理莫斯科 | Gitee | 自动哨兵上位机 |
-| [roborts_decision](https://github.com/RoboMaster) | 官方 | GitHub | RoboRTS 决策模块 |
-| [rm_navigation](https://github.com/RoboMaster) | 官方 | GitHub | 官方导航栈 |
+### 项目 1：河北科技大学 - KDRobot_RM2023Sentry_Navigation
 
-**学习资料**：
-- 《Probabilistic Robotics》- Sebastian Thrun
-- ROS Navigation 教程：https://wiki.ros.org/navigation/Tutorials
-- Cartographer 文档：https://google-cartographer-ros.readthedocs.io
-- bilibili RM 导航教程系列
+**仓库地址**：https://gitee.com/KDRobot/KDRobot_RM2023Sentry_Navigation
+
+**战队**：河北科技大学 Actor & Thinker
+
+**为什么好**：
+- ✅ **完整的 ROS 哨兵导航系统**：从建图到定位到规划，全链路实现
+- ✅ **Cartographer 集成**：直接使用成熟的 Google Cartographer SLAM 库
+- ✅ **详细的中文教程**：包含环境配置、运行步骤、参数调优指南
+- ✅ **多个赛季沉淀**：2022-2023 赛季的迭代，代码成熟稳定
+- ✅ **新手友好**：README 非常详细，问题解决记录完整
+
+**技术亮点**：
+- 多传感器融合方案（LiDAR + IMU + 里程计）
+- 全局与局部规划分离，路径平滑
+- 有限状态机决策，逻辑清晰
+
+**学习建议**：先跑仿真，再逐步移植到真实硬件
+
+### 项目 2：深圳北理莫斯科大学 - pb_rm_simulation
+
+**仓库地址**：https://gitee.com/SMBU-POLARBEAR/pb_rm_simulation
+
+**战队**：深圳北理莫斯科大学 北极熊
+
+**为什么好**：
+- ✅ **高质量仿真环境**：Gazebo 建模精细，接近真实比赛场地
+- ✅ **完整的哨兵架构**：从感知到控制到决策，代码完整
+- ✅ **Sim2Real 设计**：仿真与真实硬件代码复用率高
+- ✅ **ROS2 支持**：使用最新的 ROS2，技术栈前沿
+- ✅ **文档齐全**：每个模块都有详细的架构说明
+
+**技术亮点**：
+- 模块化插件架构，方便扩展
+- 支持多种导航算法切换
+- 完整的测试和验证工具链
+
+**学习建议**：先学习仿真环境搭建，再逐步迁移算法
+
+### 项目 3：深圳北理莫斯科大学 - pb2025_sentry_nav
+
+**仓库地址**：https://github.com/SMBU-PolarBear-Robotics-Team/pb2025_sentry_nav
+
+**战队**：深圳北理莫斯科大学 北极熊（2025 赛季）
+
+**为什么好**：
+- ✅ **最新赛季代码**：2025 赛季的最新技术方案
+- ✅ **真实硬件验证**：已经在真实哨兵上跑通的代码
+- ✅ **性能优化**：针对赛场特定场景做了优化
+- ✅ **问题解决记录**：包含大量调试日志和问题分析
+- ✅ **持续更新**：赛季过程中持续迭代改进
+
+**技术亮点**：
+- LiDAR-IMU 紧耦合，定位精度更高
+- 动态路径重规划，响应更快
+- 多地图切换，支持多种场地
+
+**学习建议**：先看 2024 版本，再看 2025 改进部分
+
+### 项目 4：深圳北理莫斯科大学 - RM2024_SMBU_auto_sentry_ws
+
+**仓库地址**：https://gitee.com/SMBU-POLARBEAR/RM2024_SMBU_auto_sentry_ws
+
+**战队**：深圳北理莫斯科大学 北极熊
+
+**为什么好**：
+- ✅ **自动哨兵完整 Workspace**：一站式配置，开箱即用
+- ✅ **上层决策完善**：状态机设计非常完整，覆盖各种赛场情况
+- ✅ **多线程架构**：感知、规划、决策、控制分离，延迟低
+- ✅ **可视化调试**：大量 RViz 可视化面板，调试方便
+- ✅ **日志完善**：方便复现问题和分析性能
+
+**技术亮点**：
+- 基于行为树的决策系统
+- 动态威胁评估和优先级排序
+- 完整的电池监控和回充逻辑
+
+**学习建议**：重点学习决策系统的设计思路
+
+### 项目 5：RoboMaster 官方 - roborts_decision
+
+**仓库地址**：https://github.com/RoboMaster/roborts_decision
+
+**作者**：大疆官方
+
+**为什么好**：
+- ✅ **官方标准实现**：代码规范，架构设计优秀
+- ✅ **行为树框架**：使用 BT++ 行为树，决策逻辑清晰
+- ✅ **多机器人支持**：步兵、英雄、哨兵都有实现
+- ✅ **战术丰富**：包含多种战术策略模板
+- ✅ **文档完善**：官方教程和 API 文档齐全
+
+**技术亮点**：
+- 模块化行为树，战术可配置
+- 支持多机器人协同
+- 完整的裁判系统集成
+
+**学习建议**：先学习官方架构，再根据自己需求定制
+
+### 项目 6：RoboMaster 官方 - rm_navigation
+
+**仓库地址**：https://github.com/RoboMaster/rm_navigation
+
+**作者**：大疆官方
+
+**为什么好**：
+- ✅ **官方导航栈**：与 RoboMaster 硬件兼容性最好
+- ✅ **多种算法集成**：GMapping、Cartographer、AMCL 等都有配置
+- ✅ **参数优化**：官方针对比赛场地做了参数调优
+- ✅ **文档齐全**：教程从建图到部署都有
+- ✅ **长期维护**：官方持续更新，技术支持好
+
+**技术亮点**：
+- 多传感器融合定位
+- 动态避障和路径重规划
+- 完整的导航监控和调试工具
+
+**学习建议**：新手首选官方导航栈，稳定可靠
+
+---
+
+## 七、算法选择建议
+
+### 场景 1：入门学习，预算有限
+
+**推荐方案**：GMapping + AMCL + DWA + 有限状态机
+**理由**：
+- 2D LiDAR 价格低（思岚 A1 或 LD06）
+- 算法成熟，教程多
+- 满足基础导航需求
+- **参考开源**：官方 rm_navigation、河北科技大学 2022
+
+### 场景 2：中等配置，追求稳定
+
+**推荐方案**：Cartographer + TEB + 有限状态机
+**理由**：
+- Cartographer 定位稳定，漂移小
+- TEB 规划路径更平滑
+- 无需深度相机，成本适中
+- **参考开源**：河北科技大学 2023、北极熊 2024
+
+### 场景 3：高性能，追求极致
+
+**推荐方案**：LIO-SAM + Fast-Planner + 行为树
+**理由**：
+- LiDAR-IMU 紧耦合，定位精度最高
+- Fast-Planner 规划速度快，适合动态环境
+- 行为树决策更灵活，战术丰富
+- **参考开源**：北极熊 2025、官方 roborts_decision
+
+---
+
+## 八、学习资料
+
+| 类型 | 资源 | 链接/说明 |
+|------|------|------|
+| **书籍** | 《Probabilistic Robotics》 | Sebastian Thrun 经典 |
+| | 《移动机器人导航与定位》 | 理论与实践结合 |
+| **官方文档** | ROS Navigation 教程 | https://wiki.ros.org/navigation/Tutorials |
+| | Cartographer 文档 | https://google-cartographer-ros.readthedocs.io |
+| **视频教程** | bilibili "RoboMaster 导航" | 多个战队的教程系列 |
+| | bilibili "SLAM 从入门到放弃" | 系统性学习路径 |
+| **实践资源** | Gazebo 教程 | 学习仿真环境搭建 |
+| | ROS2 官方教程 | 掌握现代机器人系统 |
