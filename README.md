@@ -70,6 +70,14 @@
 |-------|-------------|
 | [bdi-mental-states](skills/bdi-mental-states/) | **全新** 使用形式 BDI 本体模式将外部 RDF 上下文转化为 Agent 心智状态（信念、愿望、意图），以支持深思熟虑推理与可解释性 |
 
+### 领域专项技能
+
+这些技能针对特定领域提供深入的技术指导和最佳实践。
+
+| 技能 | 描述 |
+|-------|-------------|
+| [rm_skill](skills/robomaster/rm_skill/) | **RoboMaster 机甲大师全能助手**：提供 RoboMaster 2026 赛季规则详解、机器人硬件架构设计、电机控制策略（PID/串级PID/三环控制）、CAN 总线通信协议、底盘运动控制与运动学解算、云台控制与小陀螺战术、视觉/导航/雷达算法设计、裁判系统应用、优秀开源项目分析及技术社区资源汇总 |
+
 ## 设计哲学
 
 ### 渐进式披露
@@ -114,7 +122,7 @@
 /plugin install context-engineering@context-engineering-marketplace
 ```
 
-这会将全部 15 项技能作为一个插件安装。技能会根据任务上下文自动激活。
+这会将全部 16 项技能作为一个插件安装。技能会根据任务上下文自动激活。
 
 ### 技能激活场景
 
@@ -135,6 +143,7 @@
 | `harness-engineering` | 设计包含锁定评估器、可编辑界面、持久化日志、新颖性关卡、回滚及审批边界的自主循环时 |
 | `project-development` | 决定 LLM 是否合适、塑造批处理流水线、创建阶段性产物或估算运营成本时 |
 | `bdi-mental-states` | 为 Agent 建模信念、愿望、意图、理性动作轨迹或神经-符号状态转换时 |
+| `rm_skill` | 开发 RoboMaster 竞赛机器人、STM32 嵌入式开发、CAN 总线电机控制、PID/串级 PID 参数整定、底盘运动学解算、云台姿态控制、小陀螺战术实现，或查阅开源项目与技术社区资源时 |
 
 <img width="1014" height="894" alt="Screenshot 2025-12-26 at 12 34 47 PM" src="https://github.com/user-attachments/assets/f79aaf03-fd2d-4c71-a630-7027adeb9bfe" />
 
@@ -155,7 +164,7 @@ curl -o .claude/skills/context-fundamentals.md \
   https://raw.githubusercontent.com/muratcankoylan/Agent-Skills-for-Context-Engineering/main/skills/context-fundamentals/SKILL.md
 ```
 
-可用技能：`context-fundamentals`、`context-degradation`、`context-compression`、`context-optimization`、`latent-briefing`、`multi-agent-patterns`、`memory-systems`、`tool-design`、`filesystem-context`、`hosted-agents`、`evaluation`、`advanced-evaluation`、`harness-engineering`、`project-development`、`bdi-mental-states`
+可用技能：`context-fundamentals`、`context-degradation`、`context-compression`、`context-optimization`、`latent-briefing`、`multi-agent-patterns`、`memory-systems`、`tool-design`、`filesystem-context`、`hosted-agents`、`evaluation`、`advanced-evaluation`、`harness-engineering`、`project-development`、`bdi-mental-states`、`rm_skill`
 
 ### 用于自定义实现
 
