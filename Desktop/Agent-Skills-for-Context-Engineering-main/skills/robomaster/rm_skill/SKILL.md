@@ -1578,7 +1578,460 @@ void CAN_Test(void)
 
 ---
 
-## 第六篇：裁判系统与比赛规范
+## 第六篇：算法组专栏——视觉、导航、雷达算法设计指南
+
+### 一、视觉算法设计
+
+#### （一）视觉算法整体架构
+
+RoboMaster 视觉系统通常采用分层架构设计，从图像采集到目标识别再到决策输出，每个环节都有明确的职责划分：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    决策输出层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 目标坐标 · 装甲板类型 · 威胁等级 · 射击决策       │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 识别结果
+┌────────────────────────────▼────────────────────────────┐
+│                    目标识别层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 装甲板检测 · 能量机关识别 · 敌方机器人分类         │  │
+│  │ 算法：YOLO/传统视觉/Hough变换                     │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 预处理图像
+┌────────────────────────────▼────────────────────────────┐
+│                    图像预处理层                         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 图像去噪 · 颜色空间转换 · 感兴趣区域提取           │  │
+│  │ 直方图均衡化 · 边缘检测 · 形态学操作              │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 原始图像
+┌────────────────────────────▼────────────────────────────┐
+│                    图像采集层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ USB摄像头 · 工业相机 · 深度相机 · 图传模块        │  │
+│  │ 分辨率：640x480/1280x720 · 帧率：30/60fps       │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### （二）视觉算法设计步骤
+
+**步骤一：需求分析**
+
+明确视觉系统需要完成的任务：
+- 目标类型：装甲板、能量机关、敌方机器人
+- 识别精度要求：像素级定位
+- 实时性要求：10-30ms 处理时间
+- 环境条件：光照变化、运动模糊、遮挡
+
+**步骤二：方案选择**
+
+| 方案类型 | 优点 | 缺点 | 适用场景 |
+|---------|------|------|---------|
+| 传统视觉 | 速度快、资源消耗低 | 鲁棒性差、参数敏感 | 简单场景、快速原型 |
+| 深度学习 | 鲁棒性强、泛化能力好 | 计算量大、需要GPU | 复杂场景、高精度需求 |
+| 混合方案 | 兼顾速度与精度 | 系统复杂度高 | 高性能要求 |
+
+**步骤三：算法实现**
+
+**传统视觉方案示例**：
+
+```python
+import cv2
+import numpy as np
+
+def detect_armor(image):
+    # 1. 颜色空间转换
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    # 2. 颜色阈值分割（蓝色装甲板）
+    lower_blue = np.array([100, 50, 50])
+    upper_blue = np.array([130, 255, 255])
+    mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    
+    # 3. 形态学操作
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    
+    # 4. 轮廓检测
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # 5. 装甲板特征匹配
+    armor_list = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < 100:
+            continue
+            
+        rect = cv2.minAreaRect(contour)
+        width, height = rect[1]
+        aspect_ratio = max(width, height) / min(width, height)
+        
+        # 判断是否为装甲板（长宽比约为2:1）
+        if 1.5 < aspect_ratio < 2.5:
+            armor_list.append(rect)
+    
+    return armor_list
+```
+
+**深度学习方案示例**（基于 YOLO）：
+
+```python
+from ultralytics import YOLO
+
+class ArmorDetector:
+    def __init__(self, model_path='yolov8n_armor.pt'):
+        self.model = YOLO(model_path)
+        
+    def detect(self, image, conf=0.5, iou=0.45):
+        results = self.model(image, conf=conf, iou=iou)
+        
+        detections = []
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                cls = int(box.cls[0].cpu().numpy())
+                conf = float(box.conf[0].cpu().numpy())
+                
+                detections.append({
+                    'bbox': (x1, y1, x2, y2),
+                    'class': cls,
+                    'confidence': conf
+                })
+        
+        return detections
+```
+
+#### （三）视觉算法参考资源
+
+**开源项目**：
+- [XJTLU GMaster 战队视觉算法](https://github.com/GMasterXJTLU/RM2023-Armor-Detection)
+- [青岛大学未来战队视觉AI](https://github.com/QduFutureTeam/qdu-rm-ai)
+- [华南理工大学华南虎战队视觉](https://github.com/SCUT-RobotTeam/RM_Vision)
+
+**学习资料**：
+- 《数字图像处理》- 冈萨雷斯
+- 《深度学习》- Ian Goodfellow
+- YOLO 官方文档：https://docs.ultralytics.com
+- OpenCV 官方教程：https://docs.opencv.org
+
+---
+
+### 二、导航算法设计
+
+#### （一）导航算法整体架构
+
+导航系统是哨兵机器人的核心，需要实现自主定位、路径规划和运动控制：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    决策层                               │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 行为状态机 · 任务调度 · 威胁评估 · 目标选择       │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 目标点
+┌────────────────────────────▼────────────────────────────┐
+│                    规划层                               │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 全局路径规划 · 局部避障 · 动态重规划              │  │
+│  │ 算法：A*/Dijkstra/DWA/TEB                        │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 速度指令
+┌────────────────────────────▼────────────────────────────┐
+│                    控制层                               │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 运动学解算 · 速度跟踪 · 姿态稳定 · 功率限制        │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 控制命令
+┌────────────────────────────▼────────────────────────────┐
+│                    感知层                               │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ LiDAR · IMU · 里程计 · 视觉                      │  │
+│  │ SLAM定位 · 传感器融合 · 状态估计                  │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### （二）导航算法设计步骤
+
+**步骤一：定位系统设计**
+
+选择合适的 SLAM 方案：
+
+| SLAM类型 | 优点 | 缺点 | 适用场景 |
+|---------|------|------|---------|
+| LiDAR SLAM | 精度高、鲁棒性强 | 成本高 | 室内/室外 |
+| Visual SLAM | 成本低、信息丰富 | 受光照影响 | 纹理丰富环境 |
+| LiDAR-IMU融合 | 精度高、抗干扰 | 系统复杂 | 高精度需求 |
+
+**步骤二：路径规划设计**
+
+**全局路径规划**：
+- 输入：起点、终点、地图
+- 算法：A*、Dijkstra、RRT
+- 输出：全局路径点序列
+
+**局部路径规划**：
+- 输入：全局路径、实时障碍物
+- 算法：DWA、TEB、人工势场
+- 输出：速度指令（vx, vy, vw）
+
+**步骤三：控制器设计**
+
+```python
+class NavigationController:
+    def __init__(self):
+        self.current_pose = [0, 0, 0]  # x, y, theta
+        self.target_pose = [0, 0, 0]
+        
+    def global_planner(self, start, goal, map):
+        # A* 算法实现
+        open_list = [(0, start)]
+        came_from = {}
+        g_score = {start: 0}
+        
+        while open_list:
+            open_list.sort()
+            current = open_list.pop(0)[1]
+            
+            if current == goal:
+                return self.reconstruct_path(came_from, goal)
+            
+            for neighbor in self.get_neighbors(current, map):
+                tentative_g = g_score[current] + self.distance(current, neighbor)
+                
+                if neighbor not in g_score or tentative_g < g_score[neighbor]:
+                    g_score[neighbor] = tentative_g
+                    f_score = tentative_g + self.heuristic(neighbor, goal)
+                    open_list.append((f_score, neighbor))
+                    came_from[neighbor] = current
+        
+        return None
+    
+    def local_planner(self, global_path, obstacles):
+        # DWA 动态窗口法
+        vx_range = [0, 1.0]
+        vy_range = [-0.5, 0.5]
+        vw_range = [-1.0, 1.0]
+        
+        best_score = -float('inf')
+        best_cmd = [0, 0, 0]
+        
+        for vx in np.linspace(vx_range[0], vx_range[1], 5):
+            for vy in np.linspace(vy_range[0], vy_range[1], 5):
+                for vw in np.linspace(vw_range[0], vw_range[1], 5):
+                    traj = self.predict_trajectory(vx, vy, vw)
+                    
+                    collision = self.check_collision(traj, obstacles)
+                    if collision:
+                        continue
+                    
+                    dist_to_goal = self.distance_to_path(traj, global_path)
+                    speed_score = np.sqrt(vx**2 + vy**2)
+                    
+                    score = 0.5 * (1 - dist_to_goal) + 0.5 * speed_score
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_cmd = [vx, vy, vw]
+        
+        return best_cmd
+```
+
+#### （三）导航算法参考资源
+
+**开源项目**：
+- [河北科技大学哨兵导航](https://gitee.com/KDRobot/KDRobot_RM2023Sentry_Navigation)
+- [深圳北理莫斯科大学导航仿真](https://gitee.com/SMBU-POLARBEAR/pb_rm_simulation)
+- [ROS Navigation Stack](https://wiki.ros.org/navigation)
+
+**学习资料**：
+- 《Probabilistic Robotics》- Sebastian Thrun
+- 《State Estimation for Robotics》- Timothy Barfoot
+- ROS Navigation Tutorials：https://wiki.ros.org/navigation/Tutorials
+
+---
+
+### 三、雷达算法设计
+
+#### （一）雷达算法整体架构
+
+雷达系统用于战场态势感知，实现敌方机器人检测、跟踪和威胁评估：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    态势输出层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 敌方位置 · 威胁等级 · 运动轨迹 · 预警信息         │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 检测结果
+┌────────────────────────────▼────────────────────────────┐
+│                    目标跟踪层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 多目标跟踪 · 轨迹预测 · 身份关联                  │  │
+│  │ 算法：卡尔曼滤波 · 粒子滤波 · SORT/DeepSORT      │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 检测框
+┌────────────────────────────▼────────────────────────────┐
+│                    目标检测层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 目标识别 · 装甲板检测 · 类型分类 · 置信度计算     │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────────────┬────────────────────────────┘
+                             │ 原始数据
+┌────────────────────────────▼────────────────────────────┐
+│                    数据采集层                           │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ 摄像头 · 激光雷达 · 红外传感器 · 裁判系统数据     │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### （二）雷达算法设计步骤
+
+**步骤一：目标检测**
+
+实现敌方机器人的识别和定位：
+
+```python
+class RadarDetector:
+    def __init__(self):
+        self.detector = YOLO('yolov8n_rm.pt')
+        self.tracker = Sort()
+    
+    def detect(self, frame):
+        results = self.detector(frame)
+        
+        detections = []
+        for result in results:
+            for box in result.boxes:
+                x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                cls = int(box.cls[0].cpu().numpy())
+                conf = float(box.conf[0].cpu().numpy())
+                
+                detections.append([x1, y1, x2, y2, conf, cls])
+        
+        return detections
+    
+    def track(self, detections):
+        if not detections:
+            return []
+        
+        dets = np.array(detections)
+        tracked = self.tracker.update(dets)
+        
+        tracks = []
+        for track in tracked:
+            x1, y1, x2, y2, track_id = track
+            tracks.append({
+                'bbox': (x1, y1, x2, y2),
+                'track_id': int(track_id)
+            })
+        
+        return tracks
+```
+
+**步骤二：威胁评估**
+
+根据检测结果评估威胁等级：
+
+```python
+def assess_threat(tracks, my_position):
+    threats = []
+    
+    for track in tracks:
+        # 计算距离
+        center_x = (track['bbox'][0] + track['bbox'][2]) / 2
+        center_y = (track['bbox'][1] + track['bbox'][3]) / 2
+        distance = np.sqrt((center_x - my_position[0])**2 + 
+                          (center_y - my_position[1])**2)
+        
+        # 威胁等级判定
+        if distance < 200:
+            threat_level = 'high'
+        elif distance < 500:
+            threat_level = 'medium'
+        else:
+            threat_level = 'low'
+        
+        threats.append({
+            'track_id': track['track_id'],
+            'distance': distance,
+            'threat_level': threat_level
+        })
+    
+    # 按威胁等级排序
+    threats.sort(key=lambda x: x['distance'])
+    
+    return threats
+```
+
+#### （三）雷达算法参考资源
+
+**开源项目**：
+- [辽宁科技大学COD战队雷达视觉](https://gitee.com/LNUT-COD/RM_Radar)
+- [华中科技大学雷达目标识别](https://github.com/HUST-RoboMaster/RadarSystem)
+- [DeepSORT 多目标跟踪](https://github.com/nwojke/deep_sort)
+
+**学习资料**：
+- 《Multiple Target Tracking》- Li Zhang
+- 《Computer Vision: Algorithms and Applications》- Richard Szeliski
+- OpenCV Tracking API：https://docs.opencv.org/4.x/d9/df8/tutorial_py_tracking.html
+
+---
+
+### 四、算法组开发流程建议
+
+#### （一）开发流程
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ 需求分析    │───▶│ 方案设计    │───▶│ 算法实现    │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ 系统测试    │───▶│ 优化迭代    │───▶│ 部署上线    │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+#### （二）团队协作建议
+
+| 角色 | 职责 | 技能要求 |
+|-----|------|---------|
+| 视觉工程师 | 目标检测、图像处理 | OpenCV、PyTorch、YOLO |
+| 导航工程师 | SLAM、路径规划 | ROS、GTSAM、Cartographer |
+| 雷达工程师 | 目标跟踪、威胁评估 | DeepSORT、多传感器融合 |
+| 算法组长 | 系统架构、协调沟通 | 全栈能力、项目管理 |
+
+#### （三）工具链推荐
+
+**开发环境**：
+- Ubuntu 20.04/22.04
+- ROS Noetic/Humble
+- PyTorch / TensorFlow
+- Visual Studio Code
+
+**调试工具**：
+- RViz（可视化）
+- GDB（调试）
+- TensorBoard（训练监控）
+- Wireshark（网络分析）
+
+---
+
+## 第七篇：裁判系统与比赛规范
 
 ### 一、裁判系统组成
 
