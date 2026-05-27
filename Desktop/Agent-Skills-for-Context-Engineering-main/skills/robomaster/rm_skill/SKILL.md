@@ -1,3 +1,16 @@
+---
+name: RoboMaster 机甲大师全能助手
+description: 提供 RoboMaster 2026 赛季规则详解、机器人硬件架构设计、电机控制策略、通信协议详解、裁判系统应用、优秀开源项目推荐以及技术社区资源汇总。本技能涵盖从入门到精通的全面技术指南，包括电控系统架构、PID控制算法、底盘运动控制、云台控制策略等核心内容。
+version: 1.1.0
+author: RoboMaster技术团队
+tags:
+  - RoboMaster
+  - 机甲大师
+  - 电控系统
+  - PID控制
+  - 机器人竞赛
+---
+
 # RoboMaster 机甲大师全能助手
 
 ## 简介
@@ -1166,6 +1179,98 @@ COD-H7-Template/
 - RT-Thread 操作系统开发
 - 模块化驱动设计
 - 系统配置与调试
+
+#### （十一）河北科技大学哨兵导航项目
+
+河北科技大学机器人战队 Actor&Thinker 在 Gitee 开源了 RM2023 哨兵导航代码（KDRobot_RM2023Sentry_Navigation），包含完整的 SLAM 以及路径规划部分。本项目基于 ROS Noetic 开发，实现了哨兵机器人的自主导航功能。
+
+**项目特点**：
+
+- 基于 ROS Noetic 框架
+- 完整的 SLAM 建图与定位
+- 路径规划算法实现
+- 哨兵机器人自主导航逻辑
+
+**核心模块**：
+
+```
+KDRobot_RM2023Sentry_Navigation/
+├── slam/                    # SLAM模块
+│   ├── cartographer/        # Cartographer建图
+│   ├── gmapping/            # GMapping建图
+│   └── localization/        # 定位模块
+├── navigation/              # 导航模块
+│   ├── move_base/           # 路径规划
+│   ├── costmap/             # 代价地图
+│   └── planner/             # 规划器
+├── perception/              # 感知模块
+│   ├── lidar/               # 激光雷达处理
+│   └── camera/              # 视觉感知
+└── control/                 # 控制模块
+    ├── base_controller/     # 底盘控制
+    └── gimbal_controller/   # 云台控制
+```
+
+**学习重点**：
+
+- ROS 导航框架使用
+- SLAM 建图与定位
+- 路径规划算法
+- 哨兵机器人自主决策
+
+#### （十二）辽宁战队雷达视觉开源项目
+
+辽宁科技大学 COD 战队开源了基于深度学习的雷达视觉检测系统，支持装甲板检测、目标识别和威胁评估功能。该项目基于 PyTorch 框架，实现了实时目标检测和跟踪算法。
+
+**项目特点**：
+
+- 基于 PyTorch 深度学习框架
+- 支持 YOLO 系列目标检测算法
+- 实时目标跟踪与预测
+- 雷达数据与视觉数据融合
+
+**核心技术**：
+
+- YOLOv5/YOLOv8 目标检测
+- 装甲板识别算法
+- 多目标跟踪（MOT）
+- 威胁等级评估
+
+**学习重点**：
+
+- 深度学习目标检测
+- 边缘推理部署
+- 多传感器数据融合
+- 实时视觉处理
+
+#### （十三）华中科技大学雷达目标识别项目
+
+华中科技大学 RoboMaster 战队开源了雷达目标识别系统，实现了基于视觉的敌方机器人检测和分类。该项目支持多种目标类型识别，包括步兵、英雄、工程等机器人类型。
+
+**项目特点**：
+
+- 基于 OpenCV 的传统视觉算法
+- 支持多种目标类型识别
+- 实时目标定位与跟踪
+- 敌方机器人威胁评估
+
+**核心模块**：
+
+```
+radar_detection/
+├── preprocessing/           # 图像预处理
+├── feature_extraction/      # 特征提取
+├── target_detection/        # 目标检测
+├── target_tracking/         # 目标跟踪
+└── threat_assessment/       # 威胁评估
+```
+
+**学习重点**：
+
+- 传统视觉目标检测
+- 图像特征提取
+- 目标分类算法
+- 实时图像处理优化
 
 ### 三、开源平台资源导航
 
